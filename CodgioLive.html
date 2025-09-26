@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Exposición Semanal y Horaria al Ruido</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(to bottom, #0d1b2a, #1b263b);
+  color: white;
+  margin: 0;
+  padding: 20px;
+}
+h1 { text-align: center; margin-bottom: 30px; font-size: 2em; }
+.card {
+  display: flex; align-items: center;
+  background: #1b263b; border-radius: 15px;
+  padding: 20px; margin-bottom: 25px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  flex-wrap: wrap;
+}
+.card img {
+  width: 160px; height: 160px;
+  border-radius: 10px; margin-right: 25px;
+  object-fit: cover;
+}
+.info { flex: 1; min-width: 300px; }
+.info h2 { margin: 0; font-size: 1.4em; }
+.info p { color: #00b4d8; margin: 5px 0 15px 0; font-size: 0.9em; }
+canvas { background: #0d1b2a; border-radius: 10px; padding: 10px; max-height: 200px; margin-bottom: 15px; }
+
+.tabla-trabajador, .tabla-dia-horas {
+  width: 100%; margin: 10px 0 20px 0; border-collapse: collapse;
+  background: #1b263b; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4); font-size: 0.85em;
+}
+.tabla-trabajador th, .tabla-trabajador td,
+.tabla-dia-horas th, .tabla-dia-horas td {
+  padding: 6px; text-align: center; border-bottom: 1px solid #2a3a55;
+}
+.tabla-trabajador th, .tabla-dia-horas th { background: #0d1b2a; color: #00b4d8; }
+.tabla-trabajador tr:last-child td, .tabla-dia-horas tr:last-child td { border-bottom: none; }
+.resaltado { color: #ff4d4d; font-weight: bold; }
+
+.botones-dias { text-align: center; margin-bottom: 15px; }
+.botones-dias button {
+  margin: 2px; padding: 6px 12px; border: none; border-radius: 5px;
+  background: #00b4d8; color: white; cursor: pointer; font-weight: bold;
+}
+.botones-dias button:hover { background: #0091c2; }
+</style>
+</head>
+<body>
+
+<h1>EXPOSICIÓN SEMANAL Y HORARIA AL RUIDO</h1>
+
+<div id="contenedorTrabajadores"></div>
+
+<script>
+const diasSemana = ["Lunes","Martes","Miércoles","Jueves","Viernes"];
+const horasDia = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00"];
+
+// Función para generar datos aleatorios
+function generarDatos(min, max, cantidad){
+  return Array.from({length:cantidad},()=>Math.floor(Math.random()*(max-min+1)+min));
+}
+
+// Función para crear gráfico
+function crearGrafico(ctx, datosIniciales){
+  return new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:horasDia,
+      datasets:[{
+        label:"dB",
+        data:datosIniciales,
+        borderColor:"#00b4d8",
+        backgroundColor:"#00b4d8",
+        tension:0.3,
+        fill:false,
+        pointRadius:3,
+        pointHoverRadius:5
+      }]
+    },
+    options:{
+      plugins:{legend:{display:true }},
+      scales:{y:{beginAtZero:true,max:120,ticks:{color:"white"}},x:{ticks:{color:"white"}}}
+    }
+  });
+}
+
+// Definición de trabajadores
+const trabajadores = [
+  {nombre:"Zona Corte Metales", min:75,max:95,img:"https://i.ibb.co/6WfWnSk/miguel.jpg"},
+  {nombre:"Zona Corte Madera", min:70,max:90,img:"https://i.ibb.co/LJ0K0Q0/luis.jpg"},
+  {nombre:"Zona de Cangueros", min:80,max:100,img:"https://i.ibb.co/jzr8RL0/carlos.jpg"},
+  {nombre:"Zona de Mezcla", min:85,max:105,img:"https://i.ibb.co/3cMc0R8/fernando.jpg"},
+  {nombre:"Zona de Descarga", min:72,max:92,img:"https://i.ibb.co/TghvXnD/jorge.jpg"}
+];
+
+// Crear cards de cada trabajador
+const contenedor = document.getElementById("contenedorTrabajadores");
+trabajadores.forEach((t,index)=>{
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+    <img src="${t.img}" alt="${t.nombre}">
+    <div class="info">
+      <h2>${t.nombre}</h2>
+      <p>EXPOSICIÓN SEMANAL</p>
+      <canvas id="chart${index}"></canvas>
+      <div class="botones-dias" id="botones${index}"></div>
+      <div id="tablaDiaHoras${index}"></div>
+    </div>`;
+  contenedor.appendChild(card);
+
+  // Crear gráfico con datos iniciales
+  t.chart = crearGrafico(document.getElementById(`chart${index}`), generarDatos(t.min,t.max,horasDia.length));
+
+  // Crear botones para cada día
+  const botonesDiv = document.getElementById(`botones${index}`);
+  diasSemana.forEach((dia,diaIndex)=>{
+    const btn = document.createElement("button");
+    btn.innerText = dia;
+    btn.onclick = ()=>mostrarValoresDia(t,diaIndex,index);
+    botonesDiv.appendChild(btn);
+  });
+});
+
+// Mostrar tabla de valores por hora de un trabajador para un día
+function mostrarValoresDia(trabajador,diaIndex,index){
+  const cont = document.getElementById(`tablaDiaHoras${index}`);
+  const tablaExistente = cont.querySelector("table"); // verifica si ya hay tabla
+
+  if(tablaExistente){
+    cont.innerHTML = ""; // si ya existe, la elimina
+    return;
+  }
+
+  cont.innerHTML = `<h3 style="text-align:center; margin:15px 0;">${horasDia[diaIndex]} - ${trabajador.nombre}</h3>`;
+  let tabla = `<table class="tabla-dia-horas"><thead><tr><th>Hora</th><th>dB</th></tr></thead><tbody>`;
+
+  // Generar valores aleatorios por hora
+  const valores = generarDatos(trabajador.min,trabajador.max,horasDia.length);
+  const max = Math.max(...valores);
+
+  for(let i=0;i<horasDia.length;i++){
+    const clase = valores[i]===max?"resaltado":"";
+    tabla += `<tr><td>${horasDia[i]}</td><td class="${clase}">${valores[i]} dB</td></tr>`;
+  }
+
+  tabla += `</tbody></table>`;
+  cont.innerHTML += tabla;
+}
+
+// Actualizar gráficos dinámicamente cada 5 segundos
+setInterval(()=>{
+  trabajadores.forEach(t=>{
+    t.chart.data.datasets[0].data = generarDatos(t.min,t.max,horasDia.length);
+    t.chart.update();
+  });
+},5000);
+</script>
+
+</body>
+</html>
